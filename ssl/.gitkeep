@@ -1,0 +1,4 @@
+# 此文件用于确保 ssl 目录被 git 跟踪
+# 请将您的 SSL 证书文件放在此目录下：
+# - certificate.pem  （SSL 证书文件）
+# - private.key      （SSL 私钥文件） 
