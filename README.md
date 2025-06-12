@@ -164,18 +164,69 @@ docker-compose pull && docker-compose up -d
 4. **访问控制** - 考虑添加 IP 白名单或防火墙规则
 5. **监控日志** - 定期检查访问和错误日志
 
-## 📖 详细文档
+## 🐛 故障排除
 
-更多详细的配置和故障排除信息，请参考 [DOCKER_COMPOSE_README.md](./DOCKER_COMPOSE_README.md)。
+### 常见问题
 
-## 🐛 问题反馈
+#### 1. 端口冲突错误
+**错误信息**: `failed to set up container networking: driver failed programming external connectivity on endpoint nuget-nginx: Bind for 0.0.0.0:80 failed: port is already allocated`
 
-如果您遇到问题，请检查：
+**解决方案**:
 
-1. Docker 和 Docker Compose 是否正确安装
-2. 端口 80 和 443 是否被占用
-3. SSL 证书文件是否正确配置
-4. 查看容器日志：`docker-compose logs`
+**方案一**: 查找并停止占用端口80的进程
+```powershell
+# 查找占用端口80的进程
+netstat -ano | findstr ":80"
+
+# 停止占用的进程（PID替换为实际进程ID）
+taskkill /PID <进程ID> /F
+```
+
+**方案二**: 修改端口映射（推荐）
+```yaml
+# 编辑 docker-compose.yml
+ports:
+  - "8080:80"    # 改为8080端口
+  - "443:443"
+```
+
+**方案三**: 停止常见的Web服务
+```powershell
+# 停止IIS服务
+net stop w3svc
+
+# 停止Apache（如果安装了）
+net stop apache2.4
+```
+
+#### 2. SSL 证书错误
+- 检查证书文件路径和权限
+- 验证证书是否有效
+- 确保证书格式正确（PEM/KEY）
+
+#### 3. 无法推送包
+- 检查 API Key 是否正确
+- 验证网络连接
+- 查看 Nginx 错误日志：`docker-compose logs nginx`
+
+#### 4. 服务无法启动
+- 检查端口是否被占用
+- 验证配置文件语法
+- 查看 Docker 日志：`docker-compose logs`
+
+### 日志查看
+
+```bash
+# 查看所有服务日志
+docker-compose logs
+
+# 查看特定服务日志
+docker-compose logs nuget-server
+docker-compose logs nginx
+
+# 实时查看日志
+docker-compose logs -f
+```
 
 ## 📄 许可证
 
