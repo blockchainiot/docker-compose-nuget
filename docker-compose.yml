@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  nuget-server:
+    image: sunside/simple-nuget-server
+    container_name: nuget-server
+    environment:
+      - NUGET_API_KEY=8e5735ec-3eac-5f9d-5a1c-196c82d7cb3d
+    volumes:
+      - ./data/db:/var/www/db
+      - ./data/packages:/var/www/packagefiles
+    networks:
+      - nuget-network
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: nuget-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./ssl:/etc/ssl/certs:ro
+    depends_on:
+      - nuget-server
+    networks:
+      - nuget-network
+    restart: unless-stopped
+
+networks:
+  nuget-network:
+    driver: bridge
+
+volumes:
+  nuget-db:
+  nuget-packages: 
