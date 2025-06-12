@@ -14,7 +14,7 @@ docker-compose-nuget/
 │   └── conf.d/
 │       └── nuget.conf         # NuGet 站点配置
 ├── ssl/                       # SSL 证书目录
-│   ├── certificate.crt        # SSL 证书文件
+│   ├── certificate.pem        # SSL 证书文件
 │   └── private.key           # SSL 私钥文件
 └── data/                     # 数据持久化目录
     ├── db/                   # NuGet 数据库
@@ -29,8 +29,8 @@ docker-compose-nuget/
 ```bash
 mkdir -p ssl
 # 将您的证书文件复制到:
-# ssl/certificate.crt  - SSL 证书
-# ssl/private.key      - SSL 私钥
+# ssl/certificate.pem  - SSL 证书（PEM 格式）
+# ssl/private.key      - SSL 私钥（KEY 格式）
 ```
 
 ### 2. 配置域名
@@ -130,6 +130,7 @@ docker system prune -f
 1. **SSL 证书错误**
    - 检查证书文件路径和权限
    - 验证证书是否有效
+   - 确保证书格式正确（PEM/KEY）
 
 2. **无法推送包**
    - 检查 API Key 是否正确
