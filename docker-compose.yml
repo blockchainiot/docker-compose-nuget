@@ -1,11 +1,24 @@
 version: '3.8'
 
+# NuGet 私有服务器 - 独立部署版本（包含 Nginx Proxy Manager）
+#
+# 使用方法:
+#   docker compose -f docker-compose.standalone.yml up -d
+#
+# 访问 Nginx Proxy Manager:
+#   http://服务器IP:81
+#   默认账号: admin@example.com / changeme
+#
+# 配置反向代理:
+#   Forward Hostname: nuget-server
+#   Forward Port: 80
+
 services:
   nuget-server:
     image: sunside/simple-nuget-server
     container_name: nuget-server
     environment:
-      - NUGET_API_KEY=8e5735ec-3eac-5f9d-5a1c-196c82d7cb3d
+      - NUGET_API_KEY=${NUGET_API_KEY:-8e5735ec-3eac-5f9d-5a1c-196c82d7cb3d}
     volumes:
       - ./data/db:/var/www/db
       - ./data/packages:/var/www/packagefiles
@@ -13,26 +26,29 @@ services:
       - nuget-network
     restart: unless-stopped
 
-  nginx:
-    image: nginx:alpine
-    container_name: nuget-nginx
+  nginx-proxy-manager:
+    image: jc21/nginx-proxy-manager:latest
+    container_name: nuget-proxy
+    restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
+      - "81:81"
+    environment:
+      - TZ=Asia/Shanghai
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - ./ssl:/etc/nginx/ssl:ro
-    depends_on:
-      - nuget-server
+      - npm_data:/data
+      - npm_letsencrypt:/etc/letsencrypt
     networks:
       - nuget-network
-    restart: unless-stopped
 
 networks:
   nuget-network:
     driver: bridge
+    name: nuget-network
 
 volumes:
-  nuget-db:
-  nuget-packages: 
+  npm_data:
+    name: nuget-npm-data
+  npm_letsencrypt:
+    name: nuget-npm-letsencrypt

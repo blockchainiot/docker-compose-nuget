@@ -1,12 +1,12 @@
 # Docker Compose NuGet 私有服务器
 
-基于 Docker Compose 的 NuGet 私有包管理服务器，支持 HTTPS 和域名绑定。
+基于 Docker Compose 的 NuGet 私有包管理服务器，使用 Nginx Proxy Manager 进行反向代理和 SSL 管理。
 
 ## 🚀 特性
 
 - ✅ **开箱即用** - 一键部署 NuGet 私有服务器
-- ✅ **HTTPS 支持** - 完整的 SSL/TLS 配置
-- ✅ **反向代理** - Nginx 反向代理，支持域名绑定
+- ✅ **可视化管理** - Nginx Proxy Manager 图形界面配置
+- ✅ **自动 HTTPS** - Let's Encrypt 自动申请和续期 SSL 证书
 - ✅ **数据持久化** - 本地数据存储，支持备份恢复
 - ✅ **高性能** - 支持大文件上传（500MB+）
 - ✅ **生产就绪** - 包含日志、监控和故障排除
@@ -16,16 +16,10 @@
 ```
 docker-compose-nuget/
 ├── docker-compose.yml          # Docker Compose 配置
-├── nginx/                      # Nginx 配置目录
-│   ├── nginx.conf             # Nginx 主配置
-│   └── conf.d/nuget.conf      # NuGet 站点配置
-├── ssl/                       # SSL 证书目录（项目根目录）
-│   ├── certificate.pem        # SSL 证书文件
-│   └── private.key           # SSL 私钥文件
-├── data/                      # 数据持久化目录
-│   ├── db/                   # NuGet 数据库
-│   └── packages/             # NuGet 包文件
-└── README.md                  # 项目说明
+├── data/                       # 数据持久化目录
+│   ├── db/                     # NuGet 数据库
+│   └── packages/               # NuGet 包文件
+└── README.md                   # 项目说明
 ```
 
 ## ⚡ 快速开始
@@ -33,7 +27,7 @@ docker-compose-nuget/
 ### 1. 克隆项目
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/blockchainiot/docker-compose-nuget.git
 cd docker-compose-nuget
 ```
 
@@ -41,35 +35,51 @@ cd docker-compose-nuget
 
 ```bash
 # 创建必要的目录
-mkdir -p data/db data/packages ssl
-
-# 准备 SSL 证书（用于 HTTPS，推荐生产环境使用）
-# 将证书文件放入项目根目录的 ssl/ 目录：
-# - ssl/certificate.pem  （SSL 证书文件）
-# - ssl/private.key      （SSL 私钥文件）
+mkdir -p data/db data/packages
 ```
 
-### 3. 配置域名
-
-编辑 `nginx/conf.d/nuget.conf`，将 `your-domain.com` 替换为您的实际域名。
-
-### 4. 启动服务
+### 3. 启动服务
 
 ```bash
 # 启动所有服务
-docker-compose up -d
+docker compose up -d
 
 # 查看服务状态
-docker-compose ps
+docker compose ps
 
 # 查看日志
-docker-compose logs -f
+docker compose logs -f
 ```
 
-### 5. 访问服务
+### 4. 配置 Nginx Proxy Manager
 
-- **HTTP**: http://your-domain.com
-- **HTTPS**: https://your-domain.com
+1. 浏览器访问：`http://服务器IP:81`
+
+2. 使用默认账号登录：
+   - 邮箱：`admin@example.com`
+   - 密码：`changeme`
+
+3. 首次登录后会要求修改密码
+
+4. 添加反向代理：
+   - 点击 **Proxy Hosts** → **Add Proxy Host**
+   - **Domain Names**: `nuget.your-domain.com`
+   - **Forward Hostname**: `nuget-server`
+   - **Forward Port**: `80`
+
+5. 配置 SSL（可选但推荐）：
+   - 在 **SSL** 标签页勾选 **Request a new SSL Certificate**
+   - 勾选 **Force SSL** 和 **HTTP/2 Support**
+   - 填写邮箱，勾选同意条款
+   - 点击 **Save**
+
+### 5. DNS 配置
+
+在域名服务商处添加 A 记录：
+
+```
+nuget.your-domain.com → 服务器IP
+```
 
 ## 📦 使用 NuGet 服务器
 
@@ -77,7 +87,7 @@ docker-compose logs -f
 
 ```bash
 # 添加私有 NuGet 源
-dotnet nuget add source https://your-domain.com/nuget \
+dotnet nuget add source https://nuget.your-domain.com/nuget \
   -n "Private NuGet" \
   -u "任意用户名" \
   -p "8e5735ec-3eac-5f9d-5a1c-196c82d7cb3d" \
@@ -94,7 +104,7 @@ dotnet nuget push package.nupkg \
 1. 打开 **工具** → **NuGet 包管理器** → **包管理器设置**
 2. 选择 **包源** → **添加新源**
 3. 配置信息：
-   - **源地址**: `https://your-domain.com/nuget`
+   - **源地址**: `https://nuget.your-domain.com/nuget`
    - **用户名**: 任意
    - **密码**: `8e5735ec-3eac-5f9d-5a1c-196c82d7cb3d`
 
@@ -102,66 +112,57 @@ dotnet nuget push package.nupkg \
 
 ### 环境变量
 
-- `NUGET_API_KEY`: NuGet API 密钥（默认: `8e5735ec-3eac-5f9d-5a1c-196c82d7cb3d`）
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `NUGET_API_KEY` | `8e5735ec-3eac-5f9d-5a1c-196c82d7cb3d` | NuGet API 密钥 |
 
 ### 端口配置
 
-- `80`: HTTP 端口（自动重定向到 HTTPS）
-- `443`: HTTPS 端口
+| 端口 | 服务 | 说明 |
+|------|------|------|
+| 80 | Nginx Proxy Manager | HTTP（自动重定向到 HTTPS） |
+| 443 | Nginx Proxy Manager | HTTPS |
+| 81 | Nginx Proxy Manager | 管理界面 |
 
 ### 数据存储
 
 - `./data/db`: NuGet 数据库文件
 - `./data/packages`: NuGet 包文件存储
-
-### SSL 证书配置
-
-SSL 证书采用以下映射方式：
-- **本地路径**: `./ssl/` （项目根目录）
-- **容器路径**: `/etc/nginx/ssl/` （nginx 容器内）
-
-**支持的证书格式**：
-- `certificate.pem` - SSL 证书文件（PEM 格式）
-- `private.key` - SSL 私钥文件（KEY 格式）
-
-这样设计的优势：
-- ✅ 证书文件独立管理，便于更新
-- ✅ 不与系统证书路径冲突
-- ✅ 符合 Docker 最佳实践
-- ✅ 支持常见的 PEM/KEY 证书格式
+- Docker Volume `nuget-npm-data`: Nginx Proxy Manager 配置
+- Docker Volume `nuget-npm-letsencrypt`: SSL 证书
 
 ## 🛠️ 维护操作
 
 ```bash
 # 停止服务
-docker-compose down
+docker compose down
 
 # 重启服务
-docker-compose restart
+docker compose restart
 
 # 查看日志
-docker-compose logs -f
+docker compose logs -f
 
 # 备份数据
 tar -czf nuget-backup-$(date +%Y%m%d).tar.gz data/
 
 # 更新镜像
-docker-compose pull && docker-compose up -d
+docker compose pull && docker compose up -d
 ```
 
 ## 📋 系统要求
 
-- Docker 19.03+
-- Docker Compose 1.25+
+- Docker 20.10+
+- Docker Compose 2.0+
 - 至少 1GB 可用磁盘空间
-- 可选：有效的 SSL 证书（用于 HTTPS）
+- 开放端口：80, 443, 81
 
 ## 🔒 安全建议
 
 1. **更改默认 API Key** - 强烈建议修改默认的 API 密钥
-2. **使用 HTTPS** - 在生产环境中启用 SSL 证书
+2. **启用 HTTPS** - 在 Nginx Proxy Manager 中配置 SSL 证书
 3. **定期备份** - 定期备份 `data/` 目录
-4. **访问控制** - 考虑添加 IP 白名单或防火墙规则
+4. **关闭管理端口** - 配置完成后可考虑限制 81 端口访问
 5. **监控日志** - 定期检查访问和错误日志
 
 ## 🐛 故障排除
@@ -169,64 +170,66 @@ docker-compose pull && docker-compose up -d
 ### 常见问题
 
 #### 1. 端口冲突错误
-**错误信息**: `failed to set up container networking: driver failed programming external connectivity on endpoint nuget-nginx: Bind for 0.0.0.0:80 failed: port is already allocated`
+
+**错误信息**: `Bind for 0.0.0.0:80 failed: port is already allocated`
 
 **解决方案**:
 
-**方案一**: 查找并停止占用端口80的进程
-```powershell
-# 查找占用端口80的进程
-netstat -ano | findstr ":80"
+```bash
+# 查找占用端口的进程
+sudo lsof -i :80
+sudo lsof -i :443
 
-# 停止占用的进程（PID替换为实际进程ID）
-taskkill /PID <进程ID> /F
+# 停止占用的服务
+sudo systemctl stop nginx
+sudo systemctl stop apache2
 ```
 
-**方案二**: 修改端口映射（推荐）
-```yaml
-# 编辑 docker-compose.yml
-ports:
-  - "8080:80"    # 改为8080端口
-  - "443:443"
+#### 2. 无法访问管理界面
+
+- 检查防火墙是否开放 81 端口
+- 确认容器正常运行：`docker compose ps`
+
+```bash
+# 开放防火墙端口
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw allow 81/tcp
 ```
 
-**方案三**: 停止常见的Web服务
-```powershell
-# 停止IIS服务
-net stop w3svc
+#### 3. SSL 证书申请失败
 
-# 停止Apache（如果安装了）
-net stop apache2.4
-```
+- 确保域名 DNS 已正确解析到服务器 IP
+- 检查 80 端口是否可从外网访问（Let's Encrypt 验证需要）
 
-#### 2. SSL 证书错误
-- 检查证书文件路径和权限
-- 验证证书是否有效
-- 确保证书格式正确（PEM/KEY）
+#### 4. 无法推送包
 
-#### 3. 无法推送包
 - 检查 API Key 是否正确
 - 验证网络连接
-- 查看 Nginx 错误日志：`docker-compose logs nginx`
-
-#### 4. 服务无法启动
-- 检查端口是否被占用
-- 验证配置文件语法
-- 查看 Docker 日志：`docker-compose logs`
+- 查看日志：`docker compose logs nuget-server`
 
 ### 日志查看
 
 ```bash
 # 查看所有服务日志
-docker-compose logs
+docker compose logs
 
 # 查看特定服务日志
-docker-compose logs nuget-server
-docker-compose logs nginx
+docker compose logs nuget-server
+docker compose logs nginx-proxy-manager
 
 # 实时查看日志
-docker-compose logs -f
+docker compose logs -f
 ```
+
+## 🔗 与其他项目共享
+
+如果服务器上还部署了其他项目（如 BN AlgoTrading），可以共享 Nginx Proxy Manager：
+
+1. 修改本项目使用外部网络
+2. 在其他项目的 Nginx Proxy Manager 中配置 NuGet 的反向代理
+
+详见项目 Wiki。
 
 ## 📄 许可证
 
@@ -235,3 +238,5 @@ docker-compose logs -f
 ## 🤝 贡献
 
 欢迎提交 Issue 和 Pull Request！
+
+- GitHub: https://github.com/blockchainiot/docker-compose-nuget
