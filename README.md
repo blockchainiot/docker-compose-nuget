@@ -221,16 +221,6 @@ docker compose logs nginx-proxy-manager
 # 实时查看日志
 docker compose logs -f
 ```
-
-## 🔗 与其他项目共享
-
-如果服务器上还部署了其他项目（如 BN AlgoTrading），可以共享 Nginx Proxy Manager：
-
-1. 修改本项目使用外部网络
-2. 在其他项目的 Nginx Proxy Manager 中配置 NuGet 的反向代理
-
-详见项目 Wiki。
-
 ## 📄 许可证
 
 本项目基于 MIT 许可证开源。
